@@ -1,0 +1,21 @@
+// 상품(Product) 엔티티 스키마 — docs/lecture-notes/04-data-model.md §7.1
+// Prisma 7: datasource 에 url 을 쓰지 않는다. 연결 주소는 prisma.config.ts 에서 지정한다.
+
+generator client {
+  provider = "prisma-client" // Prisma 7의 ESM 기본 제너레이터 (5/6의 prisma-client-js 와 다름)
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Product {
+  id          String @id
+  name        String
+  price       Int // 가격 (단위: 원, 정수)
+  imageUrl    String @map("image_url") // 코드는 camelCase, DB 컬럼은 snake_case
+  description String
+
+  @@map("products") // 모델 Product → 테이블 products
+}

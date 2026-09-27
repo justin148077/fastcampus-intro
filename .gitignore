@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -45,3 +46,8 @@ next-env.d.ts
 
 # claude code
 .claude/
+
+# prisma — 생성된 클라이언트, 로컬 SQLite 파일
+/generated/prisma
+*.db
+*.db-journal

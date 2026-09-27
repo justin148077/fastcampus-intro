@@ -9,6 +9,9 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    # .env 는 git 에 올라가지 않으므로 CI 에서 직접 지정한다. (테스트는 vitest 설정의 test.db 를 따로 쓴다)
+    env:
+      DATABASE_URL: "file:./dev.db"
     steps:
       - uses: actions/checkout@v4 # 1. 코드 받아오기
       - uses: pnpm/action-setup@v4 # 2. pnpm 설치
@@ -19,6 +22,8 @@ jobs:
           node-version: 24 # 로컬 Node 버전에 맞춤 (node -v → v24.x)
           cache: pnpm # 의존성을 캐시해서 더 빠르게
       - run: pnpm install --frozen-lockfile # 4. 의존성 설치 (lockfile 그대로)
+      - name: Prisma 클라이언트 생성
+        run: pnpm exec prisma generate # generated/prisma 는 git 에 없으므로 CI 에서 만든다
       - name: 린트 검사
         run: pnpm lint # 5. 린트 검사
       - name: 테스트 실행

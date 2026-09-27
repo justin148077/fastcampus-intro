@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트 개요
 
-강의 실습용 간단 쇼핑몰. 상품 목록과 상품 상세 조회만 제공하는 **프론트엔드 전용** Next.js 앱이다. 백엔드·DB·API 라우트·인증·장바구니·결제는 **의도적으로 범위에서 제외**되어 있으므로 새로 추가하지 말 것. 모든 상품 데이터는 하드코딩된 정적 배열에서 직접 import 한다.
+강의 실습용 간단 쇼핑몰. 상품 목록과 상품 상세 조회만 제공하는 **프론트엔드 전용** Next.js 앱이다. 인증·장바구니·결제는 **의도적으로 범위에서 제외**되어 있으므로 새로 추가하지 말 것. 화면은 하드코딩된 정적 배열에서 상품 데이터를 직접 import 한다. 단, 데이터 모델 실습(`docs/lecture-notes/04-data-model.md`)용으로 **SQLite + Prisma 7** 환경과 `Product` 엔티티가 설정되어 있다(아래 "데이터베이스" 절). 상품 목록 API(`GET /api/products`)가 이 DB를 읽는다(아래 "API" 절).
 
 **현재 상태**: 실습 시작 지점. 프로젝트 스캐폴드(Next.js + TypeScript + Tailwind 설정, 루트 레이아웃, 상품 이미지)와 PRD만 있고 **기능 코드는 아직 구현되어 있지 않다**. 아래 "구현할 구조"는 앞으로 만들어야 할 목표 구조다.
 
@@ -53,6 +53,10 @@ pnpm test          # Vitest watch 모드 (저장하면 자동 재실행)
 pnpm test:run      # Vitest 1회 실행 (CI용)
 pnpm test:ui       # Vitest UI 모드 (브라우저에서 결과 확인)
 pnpm test:run src/lib/format.test.ts   # 특정 테스트 파일만 실행
+pnpm db:migrate    # prisma migrate dev (스키마 변경 → 마이그레이션 생성·적용)
+pnpm db:generate   # prisma generate (generated/prisma 에 타입·클라이언트 생성)
+pnpm db:seed       # prisma db seed (PRD 상품 6종 upsert)
+pnpm db:studio     # prisma studio (브라우저에서 DB 확인)
 ```
 
 테스트는 **Vitest + React Testing Library**(jsdom 환경)를 쓴다. 설정은 `vitest.config.mts`, 공통 준비는 `vitest.setup.ts`(jest-dom 매처 등록, 매 테스트 후 `cleanup`). 테스트 파일은 대상 옆에 `*.test.ts(x)`로 둔다. 작성 규칙은 `docs/lecture-notes/02-testing.md`를 따른다 — 한 테스트 한 단언, Given–When–Then, `getByRole`/`getByText` 같은 의미 기반 쿼리. `async` 서버 컴포넌트는 Vitest가 렌더하지 못하므로 동기 컴포넌트·함수 위주로 테스트한다.
@@ -68,6 +72,25 @@ Next.js **App Router** + TypeScript(strict) + **Tailwind CSS v4**.
 - `public/images/product-01.png` ~ `product-06.png` — 상품 6종 이미지 (PRD 샘플 데이터의 `imageUrl`과 1:1 대응).
 - `next.config.ts` — `images.unoptimized: true`. 실습 중 같은 파일명으로 이미지를 교체해도 `next/image` 캐시 때문에 옛 이미지가 남는 문제를 피하려는 설정이다.
 - **경로 별칭**: `@/*` → `src/*` (tsconfig).
+
+### 데이터베이스 (SQLite + Prisma 7)
+
+- `prisma/schema.prisma` — `Product` 모델(`@@map("products")`, `imageUrl` → `image_url`). Prisma 7이라 `datasource`에 `url`이 없고 연결 주소는 `prisma.config.ts`(`env("DATABASE_URL")`)에서 읽는다.
+- `.env` — `DATABASE_URL="file:./dev.db"`. git에 올라가지 않으므로 처음 받으면 `cp .env.example .env`.
+- `src/lib/prisma.ts` — `PrismaBetterSqlite3` 어댑터를 넣은 `PrismaClient` 인스턴스.
+- `generated/prisma/` — `prisma generate` 결과물(git·ESLint 제외). 클론 직후나 스키마 변경 후 `pnpm db:generate`를 실행해야 한다. Prisma 7의 `migrate dev`는 generate를 자동으로 하지 않는다.
+- `prisma/seed.ts` — PRD 샘플 6종을 id 기준 upsert.
+- `dev.db`는 로컬 파일이며 git 제외. 새 환경 세팅 순서: `pnpm install` → `cp .env.example .env` → `pnpm db:migrate` → `pnpm db:generate` (→ 필요 시 `pnpm db:seed`).
+- `pnpm-workspace.yaml`의 `allowBuilds`/`onlyBuiltDependencies`에 `@prisma/engines`·`prisma`·`better-sqlite3`·`esbuild`가 있어야 네이티브 빌드가 돈다.
+- `prisma` 패키지의 npm `latest` 태그가 8.x RC를 가리키므로, 설치·업데이트 시 7.x(`^7.10.0`)를 명시한다.
+
+### API (Route Handler)
+
+- `GET /api/products` (`src/app/api/products/route.ts`) — 상품 목록. 응답 `{ products: ProductListItem[] }`, 항목은 목록 카드에 필요한 `id`·`name`·`price`(정수 원)·`imageUrl`만(설명 제외), `id` 오름차순. 실패 시 `500 { error: { message } }`(한글).
+- 응답 타입(API 계약)은 `src/types/product.ts` — 서버·프론트가 함께 import 하며 타입만 둔다(클라이언트 번들에 Prisma가 섞이지 않게).
+- DB 조회는 `src/server/*.ts`에 두고 route handler는 이를 호출만 한다.
+- 테스트: 서버 테스트 파일은 맨 위에 `// @vitest-environment node`. Vitest는 `test.db`(개발용 `dev.db`와 분리)를 쓰며, `vitest.global-setup.mts`가 실행 전마다 test.db를 새로 만들고 `migrate deploy`한다. 테스트 데이터 준비는 `src/test/products.ts`의 `resetProducts()`.
+- CI는 `DATABASE_URL`을 job env로 주고 `prisma generate` 후 lint·test를 돈다.
 
 ### 구현할 구조 (PRD 기준)
 

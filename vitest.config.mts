@@ -9,9 +9,15 @@ export default defineConfig({
   },
   test: {
     // 컴포넌트 테스트를 위해 브라우저 DOM을 흉내 내는 jsdom 환경을 쓴다.
+    // 서버(DB) 테스트는 파일 맨 위에 `// @vitest-environment node` 를 적는다.
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
-    // 스캐폴드(main)에는 아직 테스트가 없으므로, 테스트 0개여도 실패로 보지 않는다.
+    // 테스트 전용 SQLite 파일. 개발 DB(dev.db)와 분리한다.
+    env: { DATABASE_URL: "file:./test.db" },
+    // test.db 생성 + 마이그레이션 적용
+    globalSetup: ["./vitest.global-setup.mts"],
+    // 테스트 파일들이 같은 test.db 를 쓰므로 파일을 순서대로 실행한다.
+    fileParallelism: false,
     passWithNoTests: true,
   },
 });

@@ -48,9 +48,14 @@ pnpm dev           # 개발 서버 (http://localhost:3000)
 pnpm build         # 프로덕션 빌드
 pnpm start         # 빌드 결과 실행
 pnpm lint          # ESLint 검사
+pnpm lint:fix      # ESLint 검사 + 자동 수정
+pnpm test          # Vitest watch 모드 (저장하면 자동 재실행)
+pnpm test:run      # Vitest 1회 실행 (CI용)
+pnpm test:ui       # Vitest UI 모드 (브라우저에서 결과 확인)
+pnpm test:run src/lib/format.test.ts   # 특정 테스트 파일만 실행
 ```
 
-테스트 프레임워크는 설정되어 있지 않다.
+테스트는 **Vitest + React Testing Library**(jsdom 환경)를 쓴다. 설정은 `vitest.config.mts`, 공통 준비는 `vitest.setup.ts`(jest-dom 매처 등록, 매 테스트 후 `cleanup`). 테스트 파일은 대상 옆에 `*.test.ts(x)`로 둔다. 작성 규칙은 `docs/lecture-notes/02-testing.md`를 따른다 — 한 테스트 한 단언, Given–When–Then, `getByRole`/`getByText` 같은 의미 기반 쿼리. `async` 서버 컴포넌트는 Vitest가 렌더하지 못하므로 동기 컴포넌트·함수 위주로 테스트한다.
 
 ## 아키텍처
 
